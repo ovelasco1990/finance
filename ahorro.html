@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ahorro · Finanzas</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+
+<body data-pagina="ahorro" data-titulo="Ahorro" data-periodo="false">
+
+  <main class="contenido">
+    <div class="pagina">
+
+      <div class="row g-3 mb-4">
+        <!-- ============ TARJETA PRINCIPAL: TOTAL + META ============ -->
+        <div class="col-12 col-lg-7">
+          <div class="glass p-4 h-100 animate__animated animate__fadeInUp">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <span class="icono icono-ahorro" style="width:56px;height:56px;font-size:1.6rem">
+                <i class="bi bi-piggy-bank"></i>
+              </span>
+              <div>
+                <div class="etiqueta text-suave">Total ahorrado</div>
+                <div class="valor text-ahorro" id="total-ahorrado" style="font-size:2rem">$0.00</div>
+              </div>
+            </div>
+
+            <!-- Bloque de meta (opcional). ahorro.js decide qué mostrar. -->
+            <div id="bloque-meta"></div>
+          </div>
+        </div>
+
+        <!-- ============ ACCIONES RÁPIDAS ============ -->
+        <div class="col-12 col-lg-5">
+          <div class="glass p-4 h-100 d-flex flex-column justify-content-center gap-2 animate__animated animate__fadeInUp">
+            <button class="btn btn-acento btn-lg" id="btn-abonar">
+              <i class="bi bi-plus-circle me-1"></i> Registrar abono
+            </button>
+            <button class="btn btn-outline-secondary" id="btn-retirar">
+              <i class="bi bi-dash-circle me-1"></i> Registrar retiro
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ HISTORIAL ============ -->
+      <div class="glass p-3 p-md-4 animate__animated animate__fadeIn">
+        <h2 class="h6 mb-3">Historial de ahorro</h2>
+        <div id="historial-ahorro"><!-- lo llena ahorro.js --></div>
+      </div>
+
+    </div><!-- /.pagina -->
+  </main>
+
+  <!-- ============ MODAL: ABONO / RETIRO ============ -->
+  <div class="modal fade" id="modal-ahorro" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass animate__animated animate__fadeInDown animate__faster">
+        <form id="form-ahorro" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Registrar abono</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <!-- tipo se fija según el botón pulsado (abono/retiro) -->
+            <input type="hidden" id="aho-tipo" value="abono">
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label for="aho-monto" class="form-label">Monto</label>
+                <input type="number" step="0.01" min="0.01" class="form-control" id="aho-monto" placeholder="0.00">
+                <div class="invalid-feedback">Ingresa un monto mayor a 0.</div>
+              </div>
+              <div class="col-6">
+                <label for="aho-fecha" class="form-label">Fecha</label>
+                <input type="date" class="form-control" id="aho-fecha">
+                <div class="invalid-feedback">Selecciona una fecha.</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <label for="aho-nota" class="form-label">Nota (opcional)</label>
+              <input type="text" class="form-control" id="aho-nota" maxlength="120" placeholder="Ej. Ahorro del mes">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-acento"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: DEFINIR / EDITAR META ============ -->
+  <div class="modal fade" id="modal-meta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass animate__animated animate__fadeInDown animate__faster">
+        <form id="form-meta" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title">Meta de ahorro</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label for="meta-objetivo" class="form-label">Monto objetivo</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" id="meta-objetivo" placeholder="Ej. 20000">
+            <div class="form-text">Déjalo vacío y guarda para quitar la meta.</div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-acento"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/ahorro.js"></script>
+</body>
+</html>

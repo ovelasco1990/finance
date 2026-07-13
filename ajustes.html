@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajustes · Finanzas</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+
+<body data-pagina="ajustes" data-titulo="Ajustes" data-periodo="false">
+
+  <main class="contenido">
+    <div class="pagina">
+      <div class="row g-3">
+
+        <!-- ============ PREFERENCIAS ============ -->
+        <div class="col-12 col-lg-6">
+          <div class="glass p-4 h-100 animate__animated animate__fadeIn">
+            <h2 class="h6 mb-3"><i class="bi bi-sliders me-1"></i> Preferencias</h2>
+            <form id="form-ajustes">
+              <div class="mb-3">
+                <label for="aj-nombre" class="form-label">Nombre de usuario</label>
+                <input type="text" class="form-control" id="aj-nombre" maxlength="40" placeholder="Tu nombre">
+                <div class="form-text">Se muestra en la barra superior.</div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-7">
+                  <label for="aj-moneda" class="form-label">Moneda</label>
+                  <input type="text" class="form-control" id="aj-moneda" maxlength="8" placeholder="MXN">
+                </div>
+                <div class="col-5">
+                  <label for="aj-simbolo" class="form-label">Símbolo</label>
+                  <input type="text" class="form-control" id="aj-simbolo" maxlength="3" placeholder="$">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="aj-tema" class="form-label">Tema por defecto</label>
+                <select id="aj-tema" class="form-select">
+                  <option value="claro">Claro</option>
+                  <option value="oscuro">Oscuro</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-acento"><i class="bi bi-check-lg me-1"></i>Guardar cambios</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ============ RESPALDO (exportar / importar) ============ -->
+        <div class="col-12 col-lg-6">
+          <div class="glass p-4 h-100 animate__animated animate__fadeIn">
+            <h2 class="h6 mb-3"><i class="bi bi-hdd me-1"></i> Respaldo de datos</h2>
+            <p class="small text-suave">
+              Mientras no exista base de datos, exporta tus datos a un archivo JSON
+              para no perderlos. Puedes volver a importarlos cuando quieras.
+            </p>
+
+            <button class="btn btn-outline-primary w-100 mb-2" id="btn-exportar">
+              <i class="bi bi-download me-1"></i> Exportar datos (JSON)
+            </button>
+
+            <label class="btn btn-outline-secondary w-100 mb-0">
+              <i class="bi bi-upload me-1"></i> Importar datos (JSON)
+              <input type="file" id="input-importar" accept="application/json,.json" hidden>
+            </label>
+            <div class="form-text">Importar reemplaza todos los datos actuales.</div>
+          </div>
+        </div>
+
+        <!-- ============ ZONA PELIGROSA ============ -->
+        <div class="col-12">
+          <div class="glass p-4 animate__animated animate__fadeIn" style="border-color:rgba(220,38,38,.35)">
+            <h2 class="h6 mb-2 text-gasto"><i class="bi bi-exclamation-octagon me-1"></i> Zona peligrosa</h2>
+            <p class="small text-suave mb-3">
+              Esto elimina <strong>todos</strong> tus movimientos, categorías, presupuestos,
+              ahorro y recurrentes. No se puede deshacer.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-danger" id="btn-borrar">
+                <i class="bi bi-trash3 me-1"></i> Borrar todos los datos
+              </button>
+              <button class="btn btn-outline-secondary" id="btn-restablecer">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer datos de ejemplo
+              </button>
+            </div>
+            <div class="form-text">Restablecer reemplaza todo por los datos de muestra iniciales.</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /.pagina -->
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/ajustes.js"></script>
+</body>
+</html>

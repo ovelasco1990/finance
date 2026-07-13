@@ -1,0 +1,505 @@
+/* =============================================================================
+ * styles.css  ·  ESTILOS PROPIOS
+ * -----------------------------------------------------------------------------
+ * Aquí vive TODO lo que no es Bootstrap: variables de color, el efecto glass,
+ * el modo claro/oscuro, el layout de sidebar + navbar y detalles de UI.
+ *
+ * Estrategia de temas:
+ *   - Todos los colores son variables CSS en :root (tema claro).
+ *   - [data-theme="dark"] en <html> redefine esas variables (tema oscuro).
+ *   - app.js solo cambia ese atributo; el navegador recalcula todo solo.
+ *   Así se cambia la paleta entera desde un único lugar.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 1. VARIABLES · TEMA CLARO (por defecto)
+ * ------------------------------------------------------------------------- */
+:root {
+  /* Color de acento principal (índigo/violeta) */
+  --acento:        #6366f1;
+  --acento-fuerte: #4f46e5;
+  --acento-suave:  rgba(99, 102, 241, 0.12);
+
+  /* Semánticos: verde ingresos, rojo gastos, azul ahorro */
+  --ingreso: #16a34a;
+  --gasto:   #dc2626;
+  --ahorro:  #0ea5e9;
+  --alerta:  #f59e0b;
+
+  /* Fondo con degradado suave (resalta el glass) */
+  --fondo-1: #eef2ff;
+  --fondo-2: #f8fafc;
+  --fondo-3: #faf5ff;
+
+  /* Texto */
+  --texto:        #1e293b;
+  --texto-suave:  #64748b;
+  --texto-tenue:  #94a3b8;
+
+  /* GLASS: superficie semitransparente + borde + sombra */
+  --glass-fondo:  rgba(255, 255, 255, 0.65);
+  --glass-borde:  rgba(255, 255, 255, 0.55);
+  --glass-sombra: 0 8px 32px rgba(31, 38, 135, 0.10);
+  --glass-blur:   14px;
+
+  /* Elementos de formulario sobre glass */
+  --input-fondo: rgba(255, 255, 255, 0.7);
+  --input-borde: rgba(148, 163, 184, 0.35);
+
+  /* Layout */
+  --ancho-sidebar: 260px;
+  --alto-navbar:   64px;
+  --radio:         18px;
+  --radio-sm:      12px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. VARIABLES · TEMA OSCURO (sobrescribe solo lo que cambia)
+ * ------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --acento:        #818cf8;
+  --acento-fuerte: #6366f1;
+  --acento-suave:  rgba(129, 140, 248, 0.18);
+
+  --ingreso: #4ade80;
+  --gasto:   #f87171;
+  --ahorro:  #38bdf8;
+  --alerta:  #fbbf24;
+
+  --fondo-1: #0f172a;
+  --fondo-2: #1e1b4b;
+  --fondo-3: #172554;
+
+  --texto:        #e2e8f0;
+  --texto-suave:  #94a3b8;
+  --texto-tenue:  #64748b;
+
+  --glass-fondo:  rgba(30, 41, 59, 0.55);
+  --glass-borde:  rgba(148, 163, 184, 0.18);
+  --glass-sombra: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --glass-blur:   14px;
+
+  --input-fondo: rgba(15, 23, 42, 0.55);
+  --input-borde: rgba(148, 163, 184, 0.25);
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. BASE · fondo con degradado, tipografía y transición de tema
+ * ------------------------------------------------------------------------- */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--texto);
+  min-height: 100vh;
+  /* Degradado suave y fijo (no se desplaza al hacer scroll) */
+  background: linear-gradient(135deg, var(--fondo-1), var(--fondo-2), var(--fondo-3));
+  background-attachment: fixed;
+  /* Transición suave al alternar claro/oscuro */
+  transition: background 0.4s ease, color 0.3s ease;
+}
+
+/* Los <html>/<body> heredan el color de texto correcto en ambos temas */
+h1, h2, h3, h4, h5, h6 { color: var(--texto); font-weight: 600; }
+a { color: var(--acento-fuerte); }
+
+/* Scrollbar discreta acorde al tema */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--texto-tenue);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. EFECTO GLASS (reutilizable)
+ * La clase .glass se aplica a tarjetas, sidebar, navbar, modales, etc.
+ * ------------------------------------------------------------------------- */
+.glass {
+  background: var(--glass-fondo);
+  border: 1px solid var(--glass-borde);
+  box-shadow: var(--glass-sombra);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border-radius: var(--radio);
+}
+
+/* ---------------------------------------------------------------------------
+ * 5. LAYOUT · sidebar + navbar + contenido
+ *
+ *   ┌──────┬───────────────────────────┐
+ *   │ side │  navbar (fija arriba)      │
+ *   │ bar  ├───────────────────────────┤
+ *   │      │  main (contenido)          │
+ *   └──────┴───────────────────────────┘
+ * ------------------------------------------------------------------------- */
+
+/* --- Sidebar (menú lateral izquierdo) --- */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: var(--ancho-sidebar);
+  z-index: 1040;
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* glass sin bordes redondeados a la derecha para pegarse al borde */
+  background: var(--glass-fondo);
+  border-right: 1px solid var(--glass-borde);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  transition: transform 0.3s ease;
+}
+
+.sidebar .marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 6px 12px 18px;
+  color: var(--texto);
+}
+.sidebar .marca i { color: var(--acento); font-size: 1.5rem; }
+
+/* Enlaces del menú */
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radio-sm);
+  color: var(--texto-suave);
+  font-weight: 500;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.sidebar .nav-link i { font-size: 1.15rem; }
+.sidebar .nav-link:hover {
+  background: var(--acento-suave);
+  color: var(--acento-fuerte);
+}
+/* Página activa: app.js le pone la clase .active al enlace correspondiente */
+.sidebar .nav-link.active {
+  background: var(--acento);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--acento-suave);
+}
+.sidebar .nav-link.active i { color: #fff; }
+
+/* --- Navbar superior --- */
+.navbar-top {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  height: var(--alto-navbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 22px;
+  margin-bottom: 22px;
+  background: var(--glass-fondo);
+  border-bottom: 1px solid var(--glass-borde);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* --- Zona de contenido: se corre a la derecha para dejar hueco al sidebar --- */
+.contenido {
+  margin-left: var(--ancho-sidebar);
+  min-height: 100vh;
+}
+.contenido .pagina { padding: 0 22px 40px; }
+
+/* Botón hamburguesa: oculto en escritorio, visible en móvil */
+.btn-menu { display: none; }
+
+/* ---------------------------------------------------------------------------
+ * 6. COMPONENTES · botones, badges, inputs sobre glass
+ * ------------------------------------------------------------------------- */
+
+/* Botón de acento (acción principal) */
+.btn-acento {
+  background: var(--acento);
+  border: none;
+  color: #fff;
+  font-weight: 500;
+}
+.btn-acento:hover { background: var(--acento-fuerte); color: #fff; }
+
+/* Botón para alternar tema (icono sol/luna) */
+.btn-tema, .btn-icono {
+  background: transparent;
+  border: 1px solid var(--glass-borde);
+  color: var(--texto);
+  border-radius: var(--radio-sm);
+  width: 42px; height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  transition: background 0.2s ease;
+}
+.btn-tema:hover, .btn-icono:hover { background: var(--acento-suave); color: var(--acento-fuerte); }
+
+/* Icono seleccionado dentro del selector de iconos (categorías) */
+.btn-icono-opcion.activo {
+  background: var(--acento);
+  color: #fff;
+  border-color: var(--acento);
+}
+
+/* ---------------------------------------------------------------------------
+ * SELECTOR DE TIPO (ingreso / gasto) estilo tarjetas
+ * Reemplaza al btn-group cuadrado en los formularios de movimiento, categoría
+ * y recurrente. Dos opciones grandes, redondeadas, que se colorean al elegir.
+ * Funciona con <input type="radio" class="btn-check"> + <label class="opcion-tipo">.
+ * ------------------------------------------------------------------------- */
+.selector-tipo { display: flex; gap: 12px; }
+.selector-tipo .opcion-tipo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border: 2px solid var(--input-borde);
+  border-radius: var(--radio-sm);
+  background: var(--input-fondo);
+  color: var(--texto-suave);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, transform .1s ease;
+}
+.selector-tipo .opcion-tipo i { font-size: 1.25rem; }
+.selector-tipo .opcion-tipo:hover { border-color: var(--acento); }
+.selector-tipo .opcion-tipo:active { transform: scale(0.98); }
+/* Estado seleccionado: cada opción toma su color semántico */
+.selector-tipo .btn-check:checked + .opcion-ingreso {
+  border-color: var(--ingreso);
+  background: rgba(22, 163, 74, 0.15);
+  color: var(--ingreso);
+}
+.selector-tipo .btn-check:checked + .opcion-gasto {
+  border-color: var(--gasto);
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--gasto);
+}
+/* Accesibilidad: aro de foco al navegar con teclado */
+.selector-tipo .btn-check:focus-visible + .opcion-tipo {
+  box-shadow: 0 0 0 0.2rem var(--acento-suave);
+}
+
+/* ---------------------------------------------------------------------------
+ * FILTROS TIPO PÍLDORA (timeline, y reutilizable)
+ * Botones separados, ovalados, en vez del btn-group pegado.
+ * ------------------------------------------------------------------------- */
+.filtros-pill { display: flex; flex-wrap: wrap; gap: 8px; }
+.filtros-pill .btn-check + label {
+  border-radius: 50rem;                 /* píldora */
+  padding: 0.4rem 1.1rem;
+  border: 1px solid var(--input-borde);
+  background: var(--input-fondo);
+  color: var(--texto-suave);
+  font-weight: 500;
+  transition: all .18s ease;
+}
+.filtros-pill .btn-check + label:hover { border-color: var(--acento); color: var(--acento); }
+/* Cada píldora activa toma su color; el genérico usa el acento */
+.filtros-pill .btn-check:checked + label { color: #fff; }
+.filtros-pill .btn-check:checked + .pill-todo    { background: var(--acento);  border-color: var(--acento); }
+.filtros-pill .btn-check:checked + .pill-ingreso { background: var(--ingreso); border-color: var(--ingreso); }
+.filtros-pill .btn-check:checked + .pill-gasto   { background: var(--gasto);   border-color: var(--gasto); }
+.filtros-pill .btn-check:checked + .pill-ahorro  { background: var(--ahorro);  border-color: var(--ahorro); }
+
+/* ---------------------------------------------------------------------------
+ * ENCABEZADOS ORDENABLES de tabla (movimientos)
+ * ------------------------------------------------------------------------- */
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { color: var(--acento); }
+.th-sort i { font-size: 0.8rem; opacity: 0.5; margin-left: 2px; }
+.th-sort.activo { color: var(--acento); }
+.th-sort.activo i { opacity: 1; }
+
+/* Botón de info (fecha de registro). Se toca en móvil y muestra un toast;
+   en escritorio además conserva el tooltip nativo (title). */
+.btn-info-registro {
+  background: none;
+  border: none;
+  padding: 0 3px;
+  color: var(--texto-tenue);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.btn-info-registro:hover { color: var(--acento); }
+
+/* Inputs, selects y textareas legibles sobre el fondo glass, en ambos temas */
+.form-control, .form-select {
+  background: var(--input-fondo);
+  border: 1px solid var(--input-borde);
+  color: var(--texto);
+}
+.form-control:focus, .form-select:focus {
+  background: var(--input-fondo);
+  color: var(--texto);
+  border-color: var(--acento);
+  box-shadow: 0 0 0 0.2rem var(--acento-suave);
+}
+.form-control::placeholder { color: var(--texto-tenue); }
+/* En oscuro, las opciones nativas del select deben leerse */
+[data-theme="dark"] .form-select option { background: #1e293b; color: var(--texto); }
+.form-label { color: var(--texto-suave); font-weight: 500; }
+
+/* Texto auxiliar y utilidades de color semántico */
+.text-suave  { color: var(--texto-suave) !important; }
+.text-ingreso { color: var(--ingreso) !important; }
+.text-gasto   { color: var(--gasto) !important; }
+.text-ahorro  { color: var(--ahorro) !important; }
+
+/* ---------------------------------------------------------------------------
+ * 7. TARJETAS DE RESUMEN (dashboard)
+ * ------------------------------------------------------------------------- */
+.tarjeta-resumen { padding: 22px; }
+.tarjeta-resumen .etiqueta {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.tarjeta-resumen .valor {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.tarjeta-resumen .icono {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+/* Fondos suaves para los iconos, según naturaleza de la tarjeta */
+.icono-acento  { background: var(--acento-suave);           color: var(--acento); }
+.icono-ingreso { background: rgba(22, 163, 74, 0.15);       color: var(--ingreso); }
+.icono-gasto   { background: rgba(220, 38, 38, 0.15);       color: var(--gasto); }
+.icono-ahorro  { background: rgba(14, 165, 233, 0.15);      color: var(--ahorro); }
+
+/* ---------------------------------------------------------------------------
+ * 8. TABLAS y BARRAS DE PROGRESO (presupuestos)
+ * ------------------------------------------------------------------------- */
+.table { color: var(--texto); --bs-table-bg: transparent; }
+.table > :not(caption) > * > * { background: transparent; color: var(--texto); }
+.table thead th { color: var(--texto-suave); font-weight: 600; border-color: var(--glass-borde); }
+.table td, .table th { border-color: var(--glass-borde); }
+
+.barra-progreso {
+  height: 10px;
+  background: var(--acento-suave);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.barra-progreso > span {
+  display: block;
+  height: 100%;
+  border-radius: 20px;
+  background: var(--acento);
+  transition: width 0.5s ease;
+}
+/* Estados de presupuesto: normal < 80% <= aviso < 100% <= excedido */
+.barra-progreso.aviso    > span { background: var(--alerta); }
+.barra-progreso.excedido > span { background: var(--gasto); }
+
+/* ---------------------------------------------------------------------------
+ * 9. LÍNEA DE TIEMPO (timeline)
+ * ------------------------------------------------------------------------- */
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--glass-borde);
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-item .punto {
+  width: 42px; height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * 10. ESTADO VACÍO (cuando no hay datos)
+ * ------------------------------------------------------------------------- */
+.estado-vacio {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--texto-tenue);
+}
+.estado-vacio i { font-size: 2.6rem; display: block; margin-bottom: 10px; opacity: 0.7; }
+
+/* ---------------------------------------------------------------------------
+ * 11. MODALES glass (Bootstrap) en ambos temas
+ * ------------------------------------------------------------------------- */
+.modal-content.glass {
+  background: var(--glass-fondo);
+  color: var(--texto);
+}
+.modal-content.glass .modal-header,
+.modal-content.glass .modal-footer { border-color: var(--glass-borde); }
+.btn-close { filter: none; }
+[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+
+/* ---------------------------------------------------------------------------
+ * 12. RESPONSIVO
+ * En móvil/tablet el sidebar se oculta fuera de pantalla y aparece al pulsar
+ * la hamburguesa (app.js alterna la clase .abierto). Un backdrop lo cierra.
+ * ------------------------------------------------------------------------- */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1035;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 991.98px) {
+  .sidebar {
+    transform: translateX(-100%); /* fuera de pantalla por defecto */
+  }
+  .sidebar.abierto { transform: translateX(0); }
+  .contenido { margin-left: 0; } /* el contenido ocupa todo el ancho */
+  .btn-menu { display: inline-flex; } /* mostrar hamburguesa */
+  .sidebar-backdrop.visible { display: block; }
+}
+
+/* En pantallas medianas/chicas la navbar no cabe en una sola fila cuando lleva
+   el selector de mes. Dejamos que envuelva: título + tema en la primera fila y
+   el selector de mes, centrado, en una segunda fila. */
+@media (max-width: 767.98px) {
+  .navbar-top {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--alto-navbar);
+    padding-top: 8px;
+    padding-bottom: 8px;
+    row-gap: 8px;
+  }
+  /* El selector de mes salta a su propia fila, a lo ancho y centrado. */
+  .navbar-top .nav-periodo {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+}
+
+/* En pantallas muy chicas, reducir el tamaño de los valores grandes */
+@media (max-width: 575.98px) {
+  .tarjeta-resumen .valor { font-size: 1.4rem; }
+  .navbar-top { padding-left: 14px; padding-right: 14px; }
+  .navbar-top h1 { font-size: 1.05rem; }
+  .contenido .pagina { padding: 0 14px 32px; }
+}
