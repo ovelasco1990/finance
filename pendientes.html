@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pendientes · Finanzas</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
+
+<!-- data-periodo="true": la página se filtra por el mes elegido en la navbar. -->
+<body data-pagina="pendientes" data-titulo="Pendientes" data-periodo="true">
+
+  <main class="contenido">
+    <div class="pagina">
+
+      <!-- Resumen: total de lo que se viene este mes -->
+      <div class="glass p-3 p-md-4 mb-4 animate__animated animate__fadeIn d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <div class="text-suave small"><i class="bi bi-hourglass-split me-1"></i> Próximos pagos de <span id="pen-etiqueta-mes"></span></div>
+          <div class="h4 mb-0 fw-bold text-gasto" id="pen-total-gasto">$0.00</div>
+          <div class="small text-ingreso d-none" id="pen-total-ingreso"></div>
+        </div>
+        <div class="small text-suave" style="max-width:280px">
+          Estos cargos <strong>no</strong> afectan tu balance hasta que les des <em>Aplicar</em>.
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <button class="btn btn-outline-secondary" id="btn-generar">
+          <i class="bi bi-arrow-repeat me-1"></i> <span id="txt-generar">Generar desde recurrentes</span>
+        </button>
+        <button class="btn btn-acento" id="btn-nuevo">
+          <i class="bi bi-plus-lg me-1"></i> Nuevo pendiente
+        </button>
+      </div>
+
+      <div class="glass p-3 p-md-4 animate__animated animate__fadeIn">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Vence</th>
+                <th>Origen</th>
+                <th class="text-end">Monto</th>
+                <th class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-pendientes"><!-- lo llena pendientes.js --></tbody>
+          </table>
+        </div>
+        <div id="pendientes-vacio" class="estado-vacio d-none">
+          <i class="bi bi-hourglass"></i>
+          No tienes cargos pendientes en este mes.
+        </div>
+      </div>
+
+    </div><!-- /.pagina -->
+  </main>
+
+  <!-- ============ MODAL: FORMULARIO DE PENDIENTE ============ -->
+  <div class="modal fade" id="modal-pendiente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass animate__animated animate__fadeInDown animate__faster">
+        <form id="form-pendiente" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title" id="titulo-modal">Nuevo pendiente</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="pen-id">
+
+            <div class="mb-3">
+              <label for="pen-nombre" class="form-label">Nombre</label>
+              <input type="text" class="form-control" id="pen-nombre" maxlength="40" placeholder="Ej. Internet, Predial…">
+              <div class="invalid-feedback">El nombre es obligatorio.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Tipo</label>
+              <div class="selector-tipo">
+                <input type="radio" class="btn-check" name="pen-tipo" id="pen-ingreso" value="ingreso">
+                <label class="opcion-tipo opcion-ingreso" for="pen-ingreso"><i class="bi bi-arrow-down-circle"></i> Ingreso</label>
+                <input type="radio" class="btn-check" name="pen-tipo" id="pen-gasto" value="gasto" checked>
+                <label class="opcion-tipo opcion-gasto" for="pen-gasto"><i class="bi bi-arrow-up-circle"></i> Gasto</label>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label for="pen-monto" class="form-label">Monto</label>
+                <input type="number" step="0.01" min="0.01" class="form-control" id="pen-monto" placeholder="0.00">
+                <div class="invalid-feedback">Monto mayor a 0.</div>
+              </div>
+              <div class="col-6">
+                <label for="pen-fecha" class="form-label">Vence</label>
+                <input type="date" class="form-control" id="pen-fecha">
+                <div class="invalid-feedback">Selecciona una fecha válida.</div>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label for="pen-categoria" class="form-label">Categoría</label>
+              <select id="pen-categoria" class="form-select">
+                <option value="">Selecciona…</option>
+              </select>
+              <div class="invalid-feedback">Elige una categoría.</div>
+            </div>
+
+            <div class="mt-3">
+              <label for="pen-nota" class="form-label">Nota (opcional)</label>
+              <input type="text" class="form-control" id="pen-nota" maxlength="120" placeholder="Ej. Pago anual…">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-acento"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/pendientes.js"></script>
+</body>
+</html>

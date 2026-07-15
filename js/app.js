@@ -26,6 +26,7 @@ const App = (() => {
     { id: 'presupuestos', href: 'presupuestos.html', icono: 'bi-wallet2',          texto: 'Presupuestos' },
     { id: 'ahorro',       href: 'ahorro.html',       icono: 'bi-piggy-bank',       texto: 'Ahorro' },
     { id: 'recurrentes',  href: 'recurrentes.html',  icono: 'bi-arrow-repeat',     texto: 'Recurrentes' },
+    { id: 'pendientes',   href: 'pendientes.html',   icono: 'bi-hourglass-split',  texto: 'Pendientes' },
     { id: 'ajustes',      href: 'ajustes.html',      icono: 'bi-gear',             texto: 'Ajustes' },
   ];
 

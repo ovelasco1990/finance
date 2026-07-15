@@ -2,8 +2,9 @@
  * recurrentes.js  ·  MOVIMIENTOS RECURRENTES (recurrentes.html)
  * -----------------------------------------------------------------------------
  * Registra movimientos que se repiten (mensual/semanal), se pueden pausar o
- * eliminar. "Aplicar recurrentes del mes" genera los movimientos del periodo
- * a partir de los activos, sin duplicar (marca `recurrente_id`). Capa asíncrona.
+ * eliminar. "Generar pendientes del mes" crea CARGOS PENDIENTES del periodo a
+ * partir de los activos (no afectan el balance hasta aplicarlos en la página
+ * Pendientes), sin duplicar (marca `recurrente_id`). Capa asíncrona.
  * ========================================================================== */
 
 (() => {
@@ -183,26 +184,33 @@
     const p = App.getPeriodo();
     // Seguridad: aunque el botón se deshabilita, bloqueamos también aquí.
     if (esMesPasado(p)) {
-      App.mostrarToast('No se pueden aplicar recurrentes en meses pasados.', 'error');
+      App.mostrarToast('No se pueden generar pendientes en meses pasados.', 'error');
       return;
     }
     const activos = (await Datos.getRecurrentes()).filter(r => r.activo);
     if (activos.length === 0) {
-      App.mostrarToast('No hay recurrentes activos para aplicar.', 'info');
+      App.mostrarToast('No hay recurrentes activos para generar.', 'info');
       return;
     }
 
+    // Generamos CARGOS PENDIENTES (no movimientos): así ves lo que se viene sin
+    // que afecte tu balance hasta que los apliques desde la página Pendientes.
+    // No duplicar: ni contra pendientes ya generados, ni contra movimientos ya
+    // aplicados (ambos identificados por recurrente_id + fecha).
+    const yaPendientes = (await Datos.getPendientes())
+      .filter(x => x.recurrente_id).map(x => x.recurrente_id + '|' + x.fecha);
     const yaAplicados = App.filtrarPorPeriodo(await Datos.getMovimientos())
-      .filter(m => m.recurrente_id)
-      .map(m => m.recurrente_id + '|' + m.fecha);
+      .filter(m => m.recurrente_id).map(m => m.recurrente_id + '|' + m.fecha);
 
     let generados = 0;
     for (const rec of activos) {
       for (const fecha of fechasDelRecurrente(rec, p.anio, p.mes)) {
-        if (yaAplicados.includes(rec.id + '|' + fecha)) continue;
-        await Datos.saveMovimiento({
-          tipo: rec.tipo, monto: rec.monto, fecha, categoria_id: rec.categoria_id,
-          nota: rec.nombre + ' (recurrente)', recurrente_id: rec.id,
+        const clave = rec.id + '|' + fecha;
+        if (yaPendientes.includes(clave) || yaAplicados.includes(clave)) continue;
+        await Datos.savePendiente({
+          nombre: rec.nombre, tipo: rec.tipo, monto: rec.monto, fecha,
+          categoria_id: rec.categoria_id, nota: rec.nombre + ' (recurrente)',
+          origen: 'recurrente', recurrente_id: rec.id,
         });
         generados++;
       }
@@ -211,8 +219,8 @@
     const mes = App.etiquetaPeriodo();
     App.mostrarToast(
       generados === 0
-        ? `Los recurrentes de ${mes} ya estaban aplicados.`
-        : `Se generaron ${generados} movimiento(s) en ${mes} ✓`,
+        ? `Los recurrentes de ${mes} ya estaban generados o aplicados.`
+        : `Se generaron ${generados} pendiente(s) de ${mes}. Revísalos en Pendientes ✓`,
       generados === 0 ? 'info' : 'exito'
     );
   }
@@ -229,10 +237,10 @@
   function actualizarEstadoAplicar() {
     const pasado = esMesPasado(App.getPeriodo());
     const btn = el('btn-aplicar');
-    btn.disabled = pasado; // no se aplican recurrentes en meses ya pasados
+    btn.disabled = pasado; // no se generan pendientes en meses ya pasados
     el('txt-aplicar').textContent = pasado
       ? 'No disponible en meses pasados'
-      : `Aplicar recurrentes de ${App.etiquetaPeriodo()}`;
+      : `Generar pendientes de ${App.etiquetaPeriodo()}`;
   }
 
   document.addEventListener('DOMContentLoaded', async () => {

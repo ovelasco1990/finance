@@ -32,6 +32,7 @@ const Datos = (() => {
     ahorro:        'fin_ahorro',        // objeto único: la alcancía (objetivo)
     abonosAhorro:  'fin_abonos_ahorro', // movimientos de la alcancía
     recurrentes:   'fin_recurrentes',
+    pendientes:    'fin_pendientes',    // cargos previstos que aún NO afectan el balance
     ajustes:       'fin_ajustes',
     sembrado:      'fin_sembrado',      // bandera: ¿ya cargamos el mock inicial?
   };
@@ -57,6 +58,16 @@ const Datos = (() => {
    * recurrentes      { id, nombre:String, tipo:'ingreso'|'gasto', monto:Number,
    *                    categoria_id:String, frecuencia:'mensual'|'semanal',
    *                    dia:Number, activo:Boolean }
+   *
+   * pendientes       { id, nombre:String, tipo:'ingreso'|'gasto', monto:Number,
+   *                    fecha:'YYYY-MM-DD',       // fecha de VENCIMIENTO (cuándo toca pagar)
+   *                    categoria_id:String, nota:String,
+   *                    origen:'recurrente'|'manual',
+   *                    recurrente_id?:String,    // si nació de un recurrente
+   *                    creado_en:String }
+   *   ↑ Un "cargo pendiente" es un pago previsto. NO afecta el balance (el balance
+   *     solo suma `movimientos`). Al APLICARLO se convierte en un movimiento real
+   *     y el pendiente se elimina.
    *
    * ajustes (único)  { moneda:String, simbolo:String, nombre_usuario:String,
    *                    tema:'claro'|'oscuro' }
@@ -146,9 +157,14 @@ const Datos = (() => {
       { id: generarId(), nombre: 'Internet', tipo: 'gasto',   monto: 600,   categoria_id: 'cat_servicios', frecuencia: 'mensual', dia: 6, activo: true },
     ];
 
+    const pendientes = [
+      { id: generarId(), nombre: 'Internet', tipo: 'gasto', monto: 600, fecha: fechaRelativa(0, 20),
+        categoria_id: 'cat_servicios', nota: '', origen: 'manual', creado_en: new Date().toISOString() },
+    ];
+
     const ajustes = { moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro' };
 
-    return { categorias, movimientos, presupuestos, ahorro, abonosAhorro, recurrentes, ajustes };
+    return { categorias, movimientos, presupuestos, ahorro, abonosAhorro, recurrentes, pendientes, ajustes };
   }
 
   /** Escribe TODO el mock en localStorage (privada, síncrona). */
@@ -160,6 +176,7 @@ const Datos = (() => {
     escribir(CLAVES.ahorro,       ej.ahorro);
     escribir(CLAVES.abonosAhorro, ej.abonosAhorro);
     escribir(CLAVES.recurrentes,  ej.recurrentes);
+    escribir(CLAVES.pendientes,   ej.pendientes);
     escribir(CLAVES.ajustes,      ej.ajustes);
     escribir(CLAVES.sembrado,     true);
   }
@@ -355,6 +372,58 @@ const Datos = (() => {
 
 
   /* ===========================================================================
+   * PENDIENTES  (cargos previstos que NO afectan el balance)
+   * ---------------------------------------------------------------------------
+   * Viven en su propia tabla, aparte de `movimientos`. Sirven para ver "lo que
+   * se viene". Al APLICAR un pendiente se crea un movimiento real (que sí impacta
+   * el balance) y el pendiente se elimina.
+   * ========================================================================= */
+
+  async function getPendientes() {
+    return leer(CLAVES.pendientes, []);
+  }
+
+  /** Upsert: si trae `id` existente edita, si no crea. Devuelve el guardado. */
+  async function savePendiente(pen) {
+    const lista = leer(CLAVES.pendientes, []);
+    if (pen.id) {
+      const i = lista.findIndex(p => p.id === pen.id);
+      if (i !== -1) lista[i] = { ...lista[i], ...pen };
+      else lista.push(pen);
+    } else {
+      pen.id = generarId();
+      if (!pen.origen) pen.origen = 'manual';
+      if (!pen.creado_en) pen.creado_en = new Date().toISOString();
+      lista.push(pen);
+    }
+    escribir(CLAVES.pendientes, lista);
+    return pen;
+  }
+
+  async function deletePendiente(id) {
+    escribir(CLAVES.pendientes, leer(CLAVES.pendientes, []).filter(p => p.id !== id));
+  }
+
+  /**
+   * Aplica un pendiente: crea el movimiento real (impacta balance) y borra el
+   * pendiente. Devuelve { ok, movimiento? }. La regla de negocio vive aquí para
+   * que ninguna pantalla tenga que orquestar los dos pasos por su cuenta.
+   */
+  async function aplicarPendiente(id) {
+    const pen = leer(CLAVES.pendientes, []).find(p => p.id === id);
+    if (!pen) return { ok: false, motivo: 'El pendiente ya no existe.' };
+    const movimiento = await saveMovimiento({
+      tipo: pen.tipo, monto: pen.monto, fecha: pen.fecha,
+      categoria_id: pen.categoria_id,
+      nota: pen.nota || pen.nombre,
+      recurrente_id: pen.recurrente_id,   // conserva la traza si venía de un recurrente
+    });
+    await deletePendiente(id);
+    return { ok: true, movimiento };
+  }
+
+
+  /* ===========================================================================
    * AJUSTES
    * ========================================================================= */
 
@@ -388,6 +457,7 @@ const Datos = (() => {
       ahorro:        leer(CLAVES.ahorro, { objetivo: null }),
       abonos_ahorro: leer(CLAVES.abonosAhorro, []),
       recurrentes:   leer(CLAVES.recurrentes, []),
+      pendientes:    leer(CLAVES.pendientes, []),
       ajustes:       leer(CLAVES.ajustes, {}),
     };
   }
@@ -403,7 +473,7 @@ const Datos = (() => {
       return { ok: false, motivo: 'El archivo no contiene datos válidos.' };
     }
     // Las claves que existan deben tener el tipo correcto.
-    const debenSerArray = ['movimientos', 'categorias', 'presupuestos', 'abonos_ahorro', 'recurrentes'];
+    const debenSerArray = ['movimientos', 'categorias', 'presupuestos', 'abonos_ahorro', 'recurrentes', 'pendientes'];
     for (const clave of debenSerArray) {
       if (clave in datos && !Array.isArray(datos[clave])) {
         return { ok: false, motivo: `El campo "${clave}" del archivo no tiene el formato esperado.` };
@@ -424,6 +494,7 @@ const Datos = (() => {
     if (datos.ahorro)        escribir(CLAVES.ahorro,       datos.ahorro);
     if (datos.abonos_ahorro) escribir(CLAVES.abonosAhorro, datos.abonos_ahorro);
     if (datos.recurrentes)   escribir(CLAVES.recurrentes,  datos.recurrentes);
+    if (datos.pendientes)    escribir(CLAVES.pendientes,   datos.pendientes);
     if (datos.ajustes)       escribir(CLAVES.ajustes,      datos.ajustes);
     escribir(CLAVES.sembrado, true); // evitar que init() vuelva a sembrar
     return { ok: true };
@@ -447,6 +518,7 @@ const Datos = (() => {
     getAhorro, setObjetivoAhorro, getAbonosAhorro, saveAbonoAhorro,
     deleteAbonoAhorro, getTotalAhorrado,
     getRecurrentes, saveRecurrente, deleteRecurrente,
+    getPendientes, savePendiente, deletePendiente, aplicarPendiente,
     getAjustes, saveAjustes,
     exportarTodo, importarTodo, borrarTodo,
   };
