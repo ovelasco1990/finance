@@ -73,6 +73,39 @@
           </div>
         </div>
 
+        <!-- ============ NOTIFICACIONES ============ -->
+        <div class="col-12">
+          <div class="glass p-4 animate__animated animate__fadeIn">
+            <h2 class="h6 mb-3"><i class="bi bi-bell me-1"></i> Notificaciones</h2>
+            <p class="small text-suave">
+              Recibe avisos del sistema de <strong>cargos por vencer</strong>, cargos vencidos,
+              presupuestos al límite y movimientos recientes. Se muestran al abrir la app
+              (mientras esté abierta). Requiere abrir el sitio por
+              <code>http://localhost/…</code> y conceder el permiso del navegador.
+            </p>
+
+            <form id="form-notif">
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="aj-notif-os">
+                <label class="form-check-label" for="aj-notif-os">Activar notificaciones del sistema</label>
+              </div>
+
+              <div class="mb-3" style="max-width:280px">
+                <label for="aj-dias-aviso" class="form-label">Días de anticipación</label>
+                <input type="number" class="form-control" id="aj-dias-aviso" min="1" max="60" step="1">
+                <div class="form-text">Con cuántos días de antelación avisar de un cargo por vencer.</div>
+              </div>
+
+              <div class="small mb-3" id="aj-notif-estado"><!-- estado del permiso --></div>
+
+              <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-acento"><i class="bi bi-check-lg me-1"></i>Guardar notificaciones</button>
+                <button type="button" class="btn btn-outline-primary" id="btn-notif-prueba"><i class="bi bi-bell me-1"></i>Enviar notificación de prueba</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <!-- ============ ZONA PELIGROSA ============ -->
         <div class="col-12">
           <div class="glass p-4 animate__animated animate__fadeIn" style="border-color:rgba(220,38,38,.35)">
@@ -100,6 +133,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/notificaciones.js"></script>
   <script src="js/ajustes.js"></script>
 </body>
 </html>

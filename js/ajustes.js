@@ -17,6 +17,10 @@
     el('aj-moneda').value = a.moneda || 'MXN';
     el('aj-simbolo').value = a.simbolo || '$';
     el('aj-tema').value = a.tema || 'oscuro';
+    // Notificaciones
+    el('aj-notif-os').checked = !!a.notif_os;
+    el('aj-dias-aviso').value = a.dias_aviso || 5;
+    pintarEstadoNotif();
   }
 
   async function guardarPreferencias(evento) {
@@ -41,6 +45,44 @@
     if (nombreNav) nombreNav.textContent = nombre;
 
     App.mostrarToast('Ajustes guardados ✓', 'exito');
+  }
+
+  /* --- Notificaciones ----------------------------------------------------- */
+
+  /** Muestra el estado del permiso del navegador bajo el switch. */
+  function pintarEstadoNotif() {
+    const cont = el('aj-notif-estado');
+    if (!cont) return;
+    const p = Notificaciones.permiso();
+    const mapa = {
+      granted:     { icono: 'bi-check-circle-fill', color: 'var(--ingreso)', txt: 'Permiso concedido: verás las notificaciones del sistema.' },
+      denied:      { icono: 'bi-x-octagon-fill',    color: 'var(--gasto)',   txt: 'Permiso bloqueado por el navegador. Habilítalo desde el candado 🔒 de la barra de direcciones; mientras tanto los avisos se muestran dentro de la app.' },
+      default:     { icono: 'bi-question-circle-fill', color: 'var(--acento)', txt: 'Permiso pendiente: al activar el switch el navegador te lo pedirá.' },
+      unsupported: { icono: 'bi-slash-circle-fill', color: 'var(--texto-suave)', txt: 'Tu navegador no soporta notificaciones del sistema; los avisos se mostrarán dentro de la app.' },
+    };
+    const e = mapa[p] || mapa.default;
+    cont.innerHTML = `<i class="bi ${e.icono} me-1" style="color:${e.color}"></i>${e.txt}`;
+  }
+
+  /** Al activar el switch, si el permiso está pendiente, pedirlo (gesto del usuario). */
+  async function alCambiarSwitchNotif() {
+    if (el('aj-notif-os').checked && Notificaciones.permiso() === 'default') {
+      await Notificaciones.pedirPermiso();
+      pintarEstadoNotif();
+    }
+  }
+
+  async function guardarNotificaciones(evento) {
+    evento.preventDefault();
+    let dias = parseInt(el('aj-dias-aviso').value, 10);
+    if (isNaN(dias) || dias < 1) dias = 5;
+    if (dias > 60) dias = 60;
+    el('aj-dias-aviso').value = dias;
+
+    await Datos.saveAjustes({ notif_os: el('aj-notif-os').checked, dias_aviso: dias });
+    await App.refrescarAjustes();
+    pintarEstadoNotif();
+    App.mostrarToast('Notificaciones guardadas ✓', 'exito');
   }
 
   /* --- Exportar ----------------------------------------------------------- */
@@ -131,6 +173,9 @@
     await App.listo;
     await cargarFormulario();
     el('form-ajustes').addEventListener('submit', guardarPreferencias);
+    el('form-notif').addEventListener('submit', guardarNotificaciones);
+    el('aj-notif-os').addEventListener('change', alCambiarSwitchNotif);
+    el('btn-notif-prueba').addEventListener('click', () => Notificaciones.probar());
     el('btn-exportar').addEventListener('click', exportar);
     el('input-importar').addEventListener('change', importar);
     el('btn-borrar').addEventListener('click', borrarTodo);

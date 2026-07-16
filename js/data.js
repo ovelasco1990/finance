@@ -34,6 +34,7 @@ const Datos = (() => {
     recurrentes:   'fin_recurrentes',
     pendientes:    'fin_pendientes',    // cargos previstos que aún NO afectan el balance
     ajustes:       'fin_ajustes',
+    notifVistas:   'fin_notif_vistas',  // claves de avisos ya notificados (anti-duplicados)
     sembrado:      'fin_sembrado',      // bandera: ¿ya cargamos el mock inicial?
   };
 
@@ -70,7 +71,12 @@ const Datos = (() => {
    *     y el pendiente se elimina.
    *
    * ajustes (único)  { moneda:String, simbolo:String, nombre_usuario:String,
-   *                    tema:'claro'|'oscuro' }
+   *                    tema:'claro'|'oscuro',
+   *                    notif_os:Boolean,        // ¿notificaciones del SO activadas?
+   *                    dias_aviso:Number }      // anticipación para "pendiente por vencer"
+   *
+   * notif_vistas     [ String ]  // claves de avisos ya mostrados; evita re-disparar
+   *                              // la misma notificación en cada carga de página.
    * ========================================================================= */
 
 
@@ -162,7 +168,8 @@ const Datos = (() => {
         categoria_id: 'cat_servicios', nota: '', origen: 'manual', creado_en: new Date().toISOString() },
     ];
 
-    const ajustes = { moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro' };
+    const ajustes = { moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro',
+                      notif_os: false, dias_aviso: 5 };
 
     return { categorias, movimientos, presupuestos, ahorro, abonosAhorro, recurrentes, pendientes, ajustes };
   }
@@ -427,19 +434,145 @@ const Datos = (() => {
    * AJUSTES
    * ========================================================================= */
 
+  // Valores por defecto de ajustes (un solo lugar para no repetirlos).
+  const AJUSTES_DEFAULT = {
+    moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro',
+    notif_os: false, dias_aviso: 5,
+  };
+
   async function getAjustes() {
-    return leer(CLAVES.ajustes, {
-      moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro',
-    });
+    // Mezclar con los defaults: así respaldos viejos (sin notif_os/dias_aviso)
+    // igual traen esos campos al leerse.
+    return { ...AJUSTES_DEFAULT, ...leer(CLAVES.ajustes, {}) };
   }
 
   async function saveAjustes(ajustes) {
-    const actual = leer(CLAVES.ajustes, {
-      moneda: 'MXN', simbolo: '$', nombre_usuario: 'Usuario', tema: 'oscuro',
-    });
+    const actual = { ...AJUSTES_DEFAULT, ...leer(CLAVES.ajustes, {}) };
     const nuevo = { ...actual, ...ajustes };
     escribir(CLAVES.ajustes, nuevo);
     return nuevo;
+  }
+
+
+  /* ===========================================================================
+   * NOTIFICACIONES  (avisos derivados: qué merece notificarse)
+   * ---------------------------------------------------------------------------
+   * Aquí vive la REGLA DE NEGOCIO de "qué avisar". El motor (notificaciones.js)
+   * solo decide CÓMO mostrarlo (SO o toast) y evita duplicados. Se usa el día
+   * REAL de hoy (no el periodo elegido en la UI) para que los avisos no dependan
+   * del mes que estés mirando. Cada aviso trae una `clave` estable para dedup.
+   * ========================================================================= */
+
+  /** Fecha de hoy en 'YYYY-MM-DD' (local). data.js no puede depender de App. */
+  function hoyISOLocal() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Días de diferencia (fechaISO - hoy). Negativo = ya pasó. */
+  function diasHasta(fechaISO, hoyISO) {
+    const a = new Date(fechaISO + 'T00:00:00');
+    const b = new Date(hoyISO + 'T00:00:00');
+    return Math.round((a - b) / 86400000);
+  }
+
+  /**
+   * Calcula la lista de avisos actuales. Devuelve
+   *   [{ clave, tipo, titulo, cuerpo, fecha? }]
+   * `tipo` ∈ 'pendiente_vence'|'pendiente_vencido'|'presupuesto'|'movimiento'.
+   */
+  async function getNotificaciones() {
+    const ajustes = await getAjustes();
+    const dias = Number(ajustes.dias_aviso) || 5;
+    const hoy = hoyISOLocal();
+    const yyyymm = hoy.slice(0, 7); // 'YYYY-MM'
+    const avisos = [];
+
+    const cats = new Map((await getCategorias()).map(c => [c.id, c]));
+    const nombreCat = (id) => (cats.get(id)?.nombre || 'Sin categoría');
+
+    // --- Pendientes: por vencer (0..dias) y vencidos (<0) ------------------
+    for (const p of await getPendientes()) {
+      const d = diasHasta(p.fecha, hoy);
+      const signo = p.tipo === 'ingreso' ? 'por cobrar' : 'a pagar';
+      if (d < 0) {
+        avisos.push({
+          clave: 'pen-vencido-' + p.id,
+          tipo: 'pendiente_vencido', fecha: p.fecha,
+          titulo: '⚠️ Cargo vencido',
+          cuerpo: `"${p.nombre}" venció el ${p.fecha} · ${signo}`,
+        });
+      } else if (d <= dias) {
+        const cuando = d === 0 ? 'vence hoy' : (d === 1 ? 'vence mañana' : `vence en ${d} días`);
+        avisos.push({
+          clave: 'pen-vence-' + p.id,
+          tipo: 'pendiente_vence', fecha: p.fecha,
+          titulo: '⏳ Cargo por vencer',
+          cuerpo: `"${p.nombre}" ${cuando} (${p.fecha}) · ${signo}`,
+        });
+      }
+    }
+
+    // --- Presupuestos al límite (mes calendario actual) --------------------
+    const presupuestos = await getPresupuestos();
+    if (presupuestos.length) {
+      const gastadoPorCat = {};
+      for (const m of await getMovimientos()) {
+        if (m.tipo !== 'gasto') continue;
+        if (String(m.fecha || '').slice(0, 7) !== yyyymm) continue;
+        gastadoPorCat[m.categoria_id] = (gastadoPorCat[m.categoria_id] || 0) + (Number(m.monto) || 0);
+      }
+      for (const pre of presupuestos) {
+        const limite = Number(pre.limite_mensual) || 0;
+        if (limite <= 0) continue;
+        const gastado = gastadoPorCat[pre.categoria_id] || 0;
+        const pct = Math.round((gastado / limite) * 100);
+        // Un solo aviso por presupuesto: el umbral más alto alcanzado.
+        const umbral = pct >= 100 ? 100 : (pct >= 80 ? 80 : 0);
+        if (!umbral) continue;
+        avisos.push({
+          clave: 'pre-' + pre.categoria_id + '-' + yyyymm + '-' + umbral,
+          tipo: 'presupuesto',
+          titulo: umbral === 100 ? '🚨 Presupuesto superado' : '📊 Presupuesto al límite',
+          cuerpo: `${nombreCat(pre.categoria_id)}: llevas ${pct}% (${gastado} de ${limite}) este mes`,
+        });
+      }
+    }
+
+    // --- Movimientos recientes (resumen de bajo ruido) ---------------------
+    // Cuenta los registrados (creado_en) en los últimos `dias` días. La clave
+    // incluye la fecha de hoy: el resumen puede volver a avisar en otro día.
+    const limiteMs = Date.now() - dias * 86400000;
+    const recientes = (await getMovimientos()).filter(m => {
+      const t = Date.parse(m.creado_en || '');
+      return !isNaN(t) && t >= limiteMs;
+    });
+    if (recientes.length) {
+      avisos.push({
+        clave: 'mov-' + hoy,
+        tipo: 'movimiento',
+        titulo: '🧾 Movimientos recientes',
+        cuerpo: `Registraste ${recientes.length} movimiento(s) en los últimos ${dias} días`,
+      });
+    }
+
+    return avisos;
+  }
+
+  /** Claves de avisos ya notificados (para no repetir). */
+  async function getNotificacionesVistas() {
+    return leer(CLAVES.notifVistas, []);
+  }
+
+  /**
+   * Marca claves como ya vistas. Conserva solo las últimas ~200 para que la
+   * lista no crezca indefinidamente (las viejas ya no aparecen como avisos).
+   */
+  async function marcarNotificacionesVistas(claves) {
+    if (!claves || !claves.length) return;
+    const set = new Set(leer(CLAVES.notifVistas, []));
+    claves.forEach(c => set.add(c));
+    escribir(CLAVES.notifVistas, Array.from(set).slice(-200));
   }
 
 
@@ -459,6 +592,7 @@ const Datos = (() => {
       recurrentes:   leer(CLAVES.recurrentes, []),
       pendientes:    leer(CLAVES.pendientes, []),
       ajustes:       leer(CLAVES.ajustes, {}),
+      notif_vistas:  leer(CLAVES.notifVistas, []),
     };
   }
 
@@ -473,7 +607,7 @@ const Datos = (() => {
       return { ok: false, motivo: 'El archivo no contiene datos válidos.' };
     }
     // Las claves que existan deben tener el tipo correcto.
-    const debenSerArray = ['movimientos', 'categorias', 'presupuestos', 'abonos_ahorro', 'recurrentes', 'pendientes'];
+    const debenSerArray = ['movimientos', 'categorias', 'presupuestos', 'abonos_ahorro', 'recurrentes', 'pendientes', 'notif_vistas'];
     for (const clave of debenSerArray) {
       if (clave in datos && !Array.isArray(datos[clave])) {
         return { ok: false, motivo: `El campo "${clave}" del archivo no tiene el formato esperado.` };
@@ -496,6 +630,7 @@ const Datos = (() => {
     if (datos.recurrentes)   escribir(CLAVES.recurrentes,  datos.recurrentes);
     if (datos.pendientes)    escribir(CLAVES.pendientes,   datos.pendientes);
     if (datos.ajustes)       escribir(CLAVES.ajustes,      datos.ajustes);
+    if (datos.notif_vistas)  escribir(CLAVES.notifVistas,  datos.notif_vistas);
     escribir(CLAVES.sembrado, true); // evitar que init() vuelva a sembrar
     return { ok: true };
   }
@@ -520,6 +655,7 @@ const Datos = (() => {
     getRecurrentes, saveRecurrente, deleteRecurrente,
     getPendientes, savePendiente, deletePendiente, aplicarPendiente,
     getAjustes, saveAjustes,
+    getNotificaciones, getNotificacionesVistas, marcarNotificacionesVistas,
     exportarTodo, importarTodo, borrarTodo,
   };
 })();
