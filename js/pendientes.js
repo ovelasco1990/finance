@@ -66,6 +66,7 @@
           <td class="text-end fw-bold ${clase}">${App.formatearMoneda(p.monto)}</td>
           <td class="text-end text-nowrap">
             <button class="btn-icono btn-aplicar" data-id="${p.id}" title="Aplicar (convertir en movimiento)" aria-label="Aplicar pendiente"><i class="bi bi-check2-circle"></i></button>
+            <button class="btn-icono btn-calendario" data-id="${p.id}" title="Agregar al calendario" aria-label="Agregar al calendario"><i class="bi bi-calendar-plus"></i></button>
             <button class="btn-icono btn-editar" data-id="${p.id}" title="Editar" aria-label="Editar pendiente"><i class="bi bi-pencil"></i></button>
             <button class="btn-icono btn-eliminar" data-id="${p.id}" title="Eliminar" aria-label="Eliminar pendiente"><i class="bi bi-trash"></i></button>
           </td>
@@ -153,6 +154,78 @@
     modal.hide();
     await pintar();
     App.mostrarToast(id ? 'Pendiente actualizado ✓' : 'Pendiente creado ✓', 'exito');
+  }
+
+  /* --- Exportar a calendario (.ics) --------------------------------------- *
+   * Genera un evento de calendario estándar (RFC 5545) para el cargo. Es la
+   * mejor forma de "recordar" sin backend: el móvil lo mete en su Calendario y
+   * te avisa de forma NATIVA, offline y con la app cerrada. Incluye dos alarmas:
+   * una `dias_aviso` días antes y otra el mismo día.
+   * ----------------------------------------------------------------------- */
+
+  /** Escapa texto para un campo ICS: barra, punto y coma, coma y saltos de línea. */
+  function escaparICS(texto) {
+    return String(texto || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+
+  /** Sello de fecha/hora actual en UTC compacto: 20260715T203000Z */
+  function selloAhora() {
+    return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  }
+
+  async function descargarICS(id) {
+    const p = (await Datos.getPendientes()).find(x => x.id === id);
+    if (!p) return;
+    const ajustes = await Datos.getAjustes();
+    const dias = Number(ajustes.dias_aviso) || 5;
+
+    const fecha = p.fecha.replace(/-/g, '');   // YYYYMMDD
+    const inicio = `${fecha}T090000`;          // 09:00 hora local (floating time)
+    const fin = `${fecha}T093000`;             // +30 min
+    const verbo = p.tipo === 'ingreso' ? '💰 Cobrar' : '💸 Pagar';
+    const resumen = `${verbo}: ${p.nombre} (${App.formatearMoneda(p.monto)})`;
+    const descripcion = `Cargo pendiente (${p.tipo}) registrado en Finanzas.` +
+      (p.nota ? ` Nota: ${p.nota}` : '');
+
+    // Nota: CRLF (\r\n) entre líneas, como exige el estándar iCalendar.
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Finanzas//Pendientes//ES',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:pendiente-${p.id}@finanzas.local`,
+      `DTSTAMP:${selloAhora()}`,
+      `DTSTART:${inicio}`,
+      `DTEND:${fin}`,
+      `SUMMARY:${escaparICS(resumen)}`,
+      `DESCRIPTION:${escaparICS(descripcion)}`,
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escaparICS('Se acerca: ' + p.nombre)}`,
+      `TRIGGER:-P${dias}D`,
+      'END:VALARM',
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escaparICS('Hoy: ' + p.nombre)}`,
+      'TRIGGER:PT0S',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pendiente-${p.nombre.replace(/[^\w\-]+/g, '_')}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+    App.mostrarToast('Evento de calendario descargado ✓', 'exito');
   }
 
   /* --- Aplicar / eliminar ------------------------------------------------- */
@@ -253,9 +326,11 @@
 
     el('tabla-pendientes').addEventListener('click', (e) => {
       const aplicarBtn = e.target.closest('.btn-aplicar');
+      const calendarioBtn = e.target.closest('.btn-calendario');
       const editar = e.target.closest('.btn-editar');
       const eliminarBtn = e.target.closest('.btn-eliminar');
       if (aplicarBtn) aplicar(aplicarBtn.dataset.id);
+      if (calendarioBtn) descargarICS(calendarioBtn.dataset.id);
       if (editar) abrirEdicion(editar.dataset.id);
       if (eliminarBtn) eliminar(eliminarBtn.dataset.id);
     });

@@ -143,10 +143,6 @@ Enfoque simple para empezar (sin obligar a poner metas):
 4. Al final, dime cómo probarlo (colocarlo en `htdocs` y abrir `http://localhost/finanzas-front/`).
 5. Si algo es ambiguo, **hazme preguntas antes de asumir**.
 
-## Fuera de alcance (versión 1)
-- No implementes backend PHP, base de datos ni autenticación todavía (pero deja el código listo para ello).
-- No uses frameworks de JS ni sistemas de build.
-- Múltiples cuentas (efectivo/banco/tarjeta) y automatización real de recurrentes quedan para v2.
 
 ## Roadmap (hacia dónde crece el sistema)
 Esto NO se implementa en la v1, pero el frontend debe quedar preparado para ello. Sirve para que tomes decisiones de diseño con el futuro en mente.
